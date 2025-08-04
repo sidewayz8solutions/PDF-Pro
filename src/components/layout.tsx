@@ -1,23 +1,34 @@
-import { ReactNode } from 'react'
-import { useSession, signOut } from 'next-auth/react'
-import { useRouter } from 'next/router'
-import Link from 'next/link'
-import { motion, AnimatePresence } from 'framer-motion'
 import {
-  DocumentTextIcon,
-  HomeIcon,
-  CreditCardIcon,
-  KeyIcon,
-  ChartBarIcon,
-  Cog6ToothIcon,
+  ReactNode,
+  useState,
+} from 'react';
+
+import {
+  AnimatePresence,
+  motion,
+} from 'framer-motion';
+import {
+  signOut,
+  useSession,
+} from 'next-auth/react';
+import Link from 'next/link';
+import { useRouter } from 'next/router';
+
+import {
   ArrowRightOnRectangleIcon,
   Bars3Icon,
-  XMarkIcon,
+  ChartBarIcon,
+  Cog6ToothIcon,
+  CreditCardIcon,
+  DocumentTextIcon,
+  HomeIcon,
+  KeyIcon,
   SparklesIcon,
   UserCircleIcon,
-} from '@heroicons/react/24/outline'
-import { useState } from 'react'
-import UsageBar from './UsageBar'
+  XMarkIcon,
+} from '@heroicons/react/24/outline';
+
+import UsageBar from './UsageBar';
 
 interface LayoutProps {
   children: ReactNode
@@ -145,7 +156,8 @@ export default function Layout({ children, title, showUsageBar = true }: LayoutP
                     {session?.user?.name || 'User'}
                   </p>
                   <p className="text-xs text-gray-500">
-                    {session?.user?.subscription?.plan || 'Free'} Plan
+                    {/* Safely access subscription plan, fallback to 'Free' */}
+                    {('subscription' in (session?.user ?? {}) && (session?.user as any)?.subscription?.plan) || 'Free'} Plan
                   </p>
                 </div>
               </div>
@@ -185,7 +197,8 @@ export default function Layout({ children, title, showUsageBar = true }: LayoutP
                 <div className="flex items-center space-x-2 px-4 py-2 bg-gray-100 rounded-lg">
                   <SparklesIcon className="h-5 w-5 text-yellow-600" />
                   <span className="font-medium">
-                    {session?.user?.creditsRemaining || 0} Credits
+                    {/* Safely access creditsRemaining, fallback to 0 */}
+                    {((session?.user as any)?.creditsRemaining ?? 0)} Credits
                   </span>
                 </div>
 

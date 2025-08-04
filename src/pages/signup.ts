@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { prisma } from '@/lib/prisma'
-import { hashPassword, generateApiKey } from '@/lib/utils'
+import { hashPassword, generateApiKey } from '@/utils'
 import { z } from 'zod'
 
 const signupSchema = z.object({
@@ -58,6 +58,9 @@ export default async function handler(
             apiAccess: false,
             priorityProcessing: false,
             customBranding: false,
+            stripeSubscriptionId: '',
+            stripePriceId: '',
+            stripeCurrentPeriodEnd: new Date(),
           },
         },
       },

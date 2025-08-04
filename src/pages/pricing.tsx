@@ -12,6 +12,7 @@ import {
   RocketLaunchIcon,
   BuildingOfficeIcon,
   CurrencyDollarIcon,
+  DocumentTextIcon,
 } from '@heroicons/react/24/outline'
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)

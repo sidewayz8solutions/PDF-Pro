@@ -9,6 +9,7 @@ interface User {
   name?: string | null
   image?: string | null
   subscription?: {
+    stripeSubscriptionId: string | undefined
     plan: 'FREE' | 'STARTER' | 'PROFESSIONAL' | 'BUSINESS'
     status: 'ACTIVE' | 'PAST_DUE' | 'CANCELED' | 'PAUSED'
     monthlyCredits: number

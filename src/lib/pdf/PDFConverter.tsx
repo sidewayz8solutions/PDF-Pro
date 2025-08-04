@@ -293,8 +293,8 @@ export class PdfConverter {
 
     // Calculate page size to fit image
     const pageSize = this.getPageSize(options)
-    const maxWidth = pageSize.width - options.margins!.left - options.margins!.right
-    const maxHeight = pageSize.height - options.margins!.top - options.margins!.bottom
+    const maxWidth = pageSize[0] - options.margins!.left - options.margins!.right
+    const maxHeight = pageSize[1] - options.margins!.top - options.margins!.bottom
 
     // Calculate scale to fit
     const scale = Math.min(maxWidth / width, maxHeight / height, 1)

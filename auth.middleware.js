@@ -2,18 +2,21 @@ import { NextApiRequest, NextApiResponse } from 'next'
 import jwt from 'jsonwebtoken'
 import { prisma } from '@/lib/prisma'
 
-export interface AuthenticatedRequest extends NextApiRequest {
-  user?: {
-    userId: string
-    email: string
-    subscription?: any
-  }
-}
+/**
+ * @typedef {import('next').NextApiRequest & {
+ *   user?: {
+ *     userId: string,
+ *     email: string,
+ *     subscription?: any,
+ *     apiKeyId?: string
+ *   }
+ * }} AuthenticatedRequest
+ */
 
 export async function authenticate(
-  req: AuthenticatedRequest,
-  res: NextApiResponse,
-  next: () => void
+  req,
+  res,
+  next
 ) {
   try {
     const token = req.headers.authorization?.replace('Bearer ', '')
@@ -22,10 +25,7 @@ export async function authenticate(
       return res.status(401).json({ error: 'No token provided' })
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
-      userId: string
-      email: string
-    }
+    const decoded = jwt.verify(token, process.env.JWT_SECRET)
 
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
@@ -49,13 +49,13 @@ export async function authenticate(
 }
 
 export function authenticateApiKey(
-  req: AuthenticatedRequest,
-  res: NextApiResponse,
-  next: () => void
+  req,
+  res,
+  next
 ) {
   return async () => {
     try {
-      const apiKey = req.headers['x-api-key'] as string
+      const apiKey = req.headers['x-api-key']
 
       if (!apiKey) {
         return res.status(401).json({ error: 'API key required' })
@@ -112,7 +112,7 @@ export function authenticateApiKey(
   }
 }
 
-function getNextMonthStart(): Date {
+function getNextMonthStart() {
   const now = new Date()
   const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1)
   return nextMonth

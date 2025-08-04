@@ -1,4 +1,4 @@
-import { PDFDocument, PDFPage, rgb } from 'pdf-lib'
+import { PDFDocument, PDFPage, rgb, degrees } from 'pdf-lib'
 
 export interface MergeOptions {
   insertPageBreaks?: boolean
@@ -157,9 +157,9 @@ export class PdfMerger {
     const isLandscape = width > height
 
     if (orientation === 'portrait' && isLandscape) {
-      page.setRotation(page.getRotation().add(90))
+      page.setRotation(degrees(90))
     } else if (orientation === 'landscape' && !isLandscape) {
-      page.setRotation(page.getRotation().add(90))
+      page.setRotation(degrees(90))
     }
   }
 

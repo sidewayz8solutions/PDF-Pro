@@ -8,7 +8,16 @@ import {
   CheckCircleIcon,
   ExclamationCircleIcon,
 } from '@heroicons/react/24/outline'
-import { formatBytes } from '@/lib/utils'
+
+// Local utility function for formatting bytes
+function formatBytes(bytes: number, decimals = 2) {
+  if (bytes === 0) return '0 Bytes'
+  const k = 1024
+  const dm = decimals < 0 ? 0 : decimals
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i]
+}
 
 interface PdfUploaderProps {
   onFilesSelected: (files: File[]) => void
@@ -124,7 +133,7 @@ export default function PdfUploader({
         <p className="mt-4 text-xs text-gray-500">
           {acceptedFormats.length > 1
             ? `Supported formats: ${acceptedFormats.join(', ')}`
-            : `PDF files only`}
+            : `PDF files only`} • 
           {' • '}
           Max size: {maxSize}MB
           {multiple && ` • Max ${maxFiles} files`}

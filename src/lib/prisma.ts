@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Operation } from '@prisma/client';
 
 declare global {
   // eslint-disable-next-line no-var
@@ -57,6 +57,9 @@ export async function createUser(data: {
           apiAccess: false,
           priorityProcessing: false,
           customBranding: false,
+          stripeSubscriptionId: '',
+          stripePriceId: '',
+          stripeCurrentPeriodEnd: new Date(),
         },
       },
     },
@@ -95,7 +98,10 @@ export async function createUsageRecord(data: {
   apiKeyId?: string
 }) {
   return await prisma.usage.create({
-    data,
+    data: {
+      ...data,
+      operation: data.operation as Operation, // Cast to enum
+    },
   })
 }
 
@@ -250,7 +256,18 @@ export async function updateSubscription(userId: string, data: {
     where: { userId },
     create: {
       userId,
-      ...data,
+      // Provide defaults for required fields when creating
+      stripeSubscriptionId: data.stripeSubscriptionId || '',
+      stripePriceId: data.stripePriceId || '',
+      stripeCurrentPeriodEnd: data.stripeCurrentPeriodEnd || new Date(),
+      monthlyCredits: data.monthlyCredits || 5,
+      // Optional fields with defaults
+      plan: data.plan || 'FREE',
+      status: data.status || 'ACTIVE',
+      maxFileSize: data.maxFileSize || 10,
+      apiAccess: data.apiAccess || false,
+      priorityProcessing: data.priorityProcessing || false,
+      customBranding: data.customBranding || false,
     },
     update: data,
   })

@@ -1,10 +1,13 @@
-import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
+// TODO: Install @aws-sdk/client-s3 and @aws-sdk/s3-request-presigner
+// import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
+// import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import fs from 'fs/promises'
 import path from 'path'
 import crypto from 'crypto'
 
 // Initialize S3 client if AWS credentials are provided
+const s3Client = null // TODO: Implement when AWS SDK is installed
+/*
 const s3Client = process.env.AWS_ACCESS_KEY_ID
   ? new S3Client({
       region: process.env.AWS_REGION || 'us-east-1',
@@ -26,8 +29,9 @@ const r2Client = process.env.R2_ACCESS_KEY_ID
       },
     })
   : null
+*/
 
-const storageClient = r2Client || s3Client
+const storageClient = null // TODO: Implement when AWS SDK is installed
 const bucketName = process.env.R2_BUCKET_NAME || process.env.S3_BUCKET_NAME || 'pdf-pro-files'
 
 export async function uploadToS3(
@@ -35,14 +39,18 @@ export async function uploadToS3(
   filename: string,
   metadata?: Record<string, string>
 ): Promise<string> {
-  // If no cloud storage configured, use local storage
+  // TODO: Implement cloud storage when AWS SDK is installed
+  // For now, use local storage fallback
+  return uploadToLocal(buffer, filename)
+
+  /* Original implementation - uncomment when AWS SDK is installed
   if (!storageClient) {
     return uploadToLocal(buffer, filename)
   }
 
   try {
     const key = `uploads/${new Date().getFullYear()}/${new Date().getMonth() + 1}/${filename}`
-    
+
     await storageClient.send(
       new PutObjectCommand({
         Bucket: bucketName,
@@ -67,6 +75,7 @@ export async function uploadToS3(
     // Fallback to local storage
     return uploadToLocal(buffer, filename)
   }
+  */
 }
 
 export async function uploadToLocal(
@@ -91,6 +100,10 @@ export async function getSignedDownloadUrl(
   key: string,
   expiresIn: number = 3600 // 1 hour
 ): Promise<string> {
+  // TODO: Implement when AWS SDK is installed
+  throw new Error('Cloud storage not configured - AWS SDK required')
+
+  /* Original implementation - uncomment when AWS SDK is installed
   if (!storageClient) {
     throw new Error('No storage client configured')
   }
@@ -101,9 +114,15 @@ export async function getSignedDownloadUrl(
   })
 
   return await getSignedUrl(storageClient, command, { expiresIn })
+  */
 }
 
 export async function deleteFile(key: string): Promise<void> {
+  // Delete from local storage only for now
+  const filePath = path.join(process.cwd(), 'public', key)
+  await fs.unlink(filePath).catch(() => {})
+
+  /* Original cloud storage implementation - uncomment when AWS SDK is installed
   if (!storageClient) {
     // Delete from local storage
     const filePath = path.join(process.cwd(), 'public', key)
@@ -121,6 +140,7 @@ export async function deleteFile(key: string): Promise<void> {
   } catch (error) {
     console.error('Delete file error:', error)
   }
+  */
 }
 
 export function generateUniqueFilename(originalName: string): string {

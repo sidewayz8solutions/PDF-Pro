@@ -1,6 +1,6 @@
 import { PDFDocument, PDFPage, rgb, degrees, StandardFonts } from 'pdf-lib'
 import crypto from 'crypto'
-import qrcode from 'qrcode'
+import qrcode from 'qrcode' // @ts-ignore
 import sharp from 'sharp'
 
 export interface SecurityOptions {
@@ -126,11 +126,12 @@ export class PdfSecurity {
 
   private async addWatermark(
     pdfDoc: PDFDocument,
-    watermarkOptions: SecurityOptions['watermark']!
+    watermarkOptions: { type: "text" | "image" | "qrcode"; content: string | Buffer; opacity?: number; position?: "center" | "diagonal" | "top-left" | "top-right" | "bottom-left" | "bottom-right" | "all-corners"; rotation?: number; fontSize?: number; color?: { r: number; g: number; b: number }; repeat?: boolean } | undefined
   ): Promise<void> {
     const pages = pdfDoc.getPages()
     
     for (const page of pages) {
+      if (!watermarkOptions) continue;
       if (watermarkOptions.type === 'text') {
         await this.addTextWatermark(page, watermarkOptions)
       } else if (watermarkOptions.type === 'image') {
@@ -143,7 +144,7 @@ export class PdfSecurity {
 
   private async addTextWatermark(
     page: PDFPage,
-    options: SecurityOptions['watermark']!
+    options: NonNullable<SecurityOptions['watermark']>
   ): Promise<void> {
     const { width, height } = page.getSize()
     const text = options.content as string
@@ -240,7 +241,7 @@ export class PdfSecurity {
   private async addImageWatermark(
     pdfDoc: PDFDocument,
     page: PDFPage,
-    options: SecurityOptions['watermark']!
+    options: NonNullable<SecurityOptions['watermark']>
   ): Promise<void> {
     const { width, height } = page.getSize()
     const imageBuffer = options.content as Buffer
@@ -303,7 +304,7 @@ export class PdfSecurity {
   private async addQRCodeWatermark(
     pdfDoc: PDFDocument,
     page: PDFPage,
-    options: SecurityOptions['watermark']!
+    options: NonNullable<SecurityOptions['watermark']>
   ): Promise<void> {
     const { width, height } = page.getSize()
     const qrContent = options.content as string
@@ -353,8 +354,16 @@ export class PdfSecurity {
 
   private applyRedaction(
     pdfDoc: PDFDocument,
-    redactionOptions: SecurityOptions['redaction']!
+    redactionOptions: {
+      page: number; areas: Array<{
+        x: number
+        y: number
+        width: number
+        height: number
+      }>; color?: { r: number; g: number; b: number }
+    }[] | undefined
   ): void {
+    if (!redactionOptions) return;
     for (const redaction of redactionOptions) {
       const pages = pdfDoc.getPages()
       const page = pages[redaction.page - 1]
@@ -386,10 +395,11 @@ export class PdfSecurity {
 
   private async addSignatureField(
     pdfDoc: PDFDocument,
-    signatureOptions: SecurityOptions['signature']!
+    signatureOptions: { fieldName: string; page: number; position: { x: number; y: number }; size: { width: number; height: number }; reason?: string; location?: string; contactInfo?: string } | undefined
   ): Promise<void> {
     // Note: pdf-lib doesn't support interactive form fields
     // This adds a visual placeholder for signatures
+    if (!signatureOptions) return;
     const pages = pdfDoc.getPages()
     const page = pages[signatureOptions.page - 1]
     
@@ -445,7 +455,6 @@ export class PdfSecurity {
     // In production, use qpdf or similar tools
     try {
       const pdfDoc = await PDFDocument.load(inputBuffer, {
-        password,
         ignoreEncryption: false,
       })
 

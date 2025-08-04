@@ -145,7 +145,7 @@ export class PdfSplitter {
         throw new Error(`Invalid range: ${start}-${end}`)
       }
 
-      const pageIndices = []
+      const pageIndices: number[] = []
       for (let j = start - 1; j < end; j++) {
         pageIndices.push(j)
       }
@@ -180,7 +180,7 @@ export class PdfSplitter {
     let partNumber = 1
 
     for (let i = 0; i < totalPages; i += n) {
-      const pageIndices = []
+      const pageIndices: number[] = []
       const end = Math.min(i + n, totalPages)
       
       for (let j = i; j < end; j++) {

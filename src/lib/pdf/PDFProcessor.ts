@@ -1,4 +1,4 @@
-import { PDFDocument, rgb, degrees, StandardFonts, PDFPage } from 'pdf-lib'
+import { PDFDocument, rgb, degrees, StandardFonts, PDFPage, PDFName, PDFDict } from 'pdf-lib'
 import sharp from 'sharp'
 import fs from 'fs/promises'
 import path from 'path'
@@ -94,17 +94,17 @@ export class PdfProcessor {
         // This is a simplified version - in production you'd need more sophisticated image handling
         const resources = page.node.Resources()
         if (resources) {
-          const xObjects = resources.lookup('XObject')
-          if (xObjects) {
+          const xObjects = resources.lookup(PDFName.of('XObject'))
+          if (xObjects && xObjects instanceof PDFDict) {
             // Remove image XObjects
-            const dict = xObjects.dict
-            if (dict) {
-              const keys = Array.from(dict.keys())
-              for (const key of keys) {
-                const obj = dict.get(key)
-                if (obj && obj.dict && obj.dict.get('Subtype')?.name === 'Image') {
-                  dict.delete(key)
-                }
+            const keys = Array.from(xObjects.keys())
+            for (const key of keys) {
+              const obj = xObjects.get(key)
+              if (
+                obj instanceof PDFDict &&
+                obj.get(PDFName.of('Subtype'))?.toString() === PDFName.of('Image').toString()
+              ) {
+                xObjects.delete(key)
               }
             }
           }
@@ -178,7 +178,7 @@ export class PdfProcessor {
       // Split by ranges
       for (const range of options.ranges) {
         const newPdf = await PDFDocument.create()
-        const pageIndices = []
+        const pageIndices: number[] = []
         
         for (let i = range.start - 1; i < range.end && i < totalPages; i++) {
           pageIndices.push(i)
@@ -194,7 +194,7 @@ export class PdfProcessor {
       // Split every N pages
       for (let i = 0; i < totalPages; i += options.splitEvery) {
         const newPdf = await PDFDocument.create()
-        const pageIndices = []
+        const pageIndices: number[] = []
         
         for (let j = i; j < i + options.splitEvery && j < totalPages; j++) {
           pageIndices.push(j)
@@ -251,7 +251,7 @@ export class PdfProcessor {
         case 'diagonal':
           x = (width - textWidth) / 2
           y = (height - textHeight) / 2
-          rotation = degrees(45)
+          rotation = 45
           break
         case 'top-left':
           x = 50
@@ -278,7 +278,7 @@ export class PdfProcessor {
         font,
         color: rgb(color.r, color.g, color.b),
         opacity,
-        rotate: rotation,
+        rotate: degrees(rotation),
       })
     }
 
@@ -309,13 +309,13 @@ export class PdfProcessor {
     return Buffer.from(protectedPdfBytes)
   }
 
-  async rotate(inputBuffer: Buffer, degrees: number): Promise<Buffer> {
+  async rotate(inputBuffer: Buffer, rotationDegrees: number): Promise<Buffer> {
     const pdfDoc = await PDFDocument.load(inputBuffer)
     const pages = pdfDoc.getPages()
 
     for (const page of pages) {
       const currentRotation = page.getRotation().angle
-      page.setRotation(degrees(currentRotation + degrees))
+      page.setRotation(degrees(currentRotation + rotationDegrees))
     }
 
     const rotatedPdfBytes = await pdfDoc.save()

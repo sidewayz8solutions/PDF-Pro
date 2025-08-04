@@ -7,15 +7,28 @@ import {
   CalendarDaysIcon,
   ExclamationTriangleIcon 
 } from '@heroicons/react/24/outline'
-import { calculatePercentage, formatDate } from '@/lib/utils'
 
 export default function UsageBar() {
   const { data: session } = useSession()
   
   if (!session?.user) return null
 
-  const subscription = session.user.subscription
-  const creditsUsed = session.user.creditsUsed || 0
+  // Use type assertion to extend user type with subscription and creditsUsed
+  const user = session.user as typeof session.user & {
+    subscription?: {
+      plan?: string
+      monthlyCredits?: number
+      currentPeriodEnd?: string
+      maxFileSize?: number
+      apiAccess?: boolean
+      priorityProcessing?: boolean
+    }
+    creditsUsed?: number
+    lastResetDate?: string
+  }
+
+  const subscription = user.subscription
+  const creditsUsed = user.creditsUsed || 0
   const totalCredits = subscription?.monthlyCredits || 5
   const creditsRemaining = Math.max(0, totalCredits - creditsUsed)
   const usagePercentage = calculatePercentage(creditsUsed, totalCredits)
@@ -23,7 +36,7 @@ export default function UsageBar() {
   const isAtLimit = creditsRemaining === 0
 
   // Calculate days until reset
-  const currentPeriodEnd = subscription?.currentPeriodEnd || session.user.lastResetDate
+  const currentPeriodEnd = subscription?.currentPeriodEnd || user.lastResetDate
   const daysUntilReset = currentPeriodEnd 
     ? Math.ceil((new Date(currentPeriodEnd).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
     : 30
@@ -135,4 +148,9 @@ export default function UsageBar() {
       </div>
     </div>
   )
+}
+
+function calculatePercentage(creditsUsed: number, totalCredits: number) {
+  if (!totalCredits || totalCredits === 0) return 0
+  return (creditsUsed / totalCredits) * 100
 }

@@ -330,7 +330,7 @@ export function usePdfTools() {
       currentOperation: null,
       error: null,
     })
-    toast.info('Operation cancelled')
+    toast('Operation cancelled')
   }, [])
 
   // Reset state

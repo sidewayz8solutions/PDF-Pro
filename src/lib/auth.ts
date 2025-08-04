@@ -9,7 +9,14 @@ import { AuthenticatedRequest } from '@/types/types'
 
 // JWT utilities
 export function generateJWT(payload: any, expiresIn: string = '7d'): string {
-  return jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn })
+  const secret = process.env.JWT_SECRET
+  if (!secret) {
+    throw new Error('JWT_SECRET environment variable is not set')
+  }
+
+  // Use require to avoid TypeScript issues with expiresIn type
+  const jsonwebtoken = require('jsonwebtoken')
+  return jsonwebtoken.sign(payload, secret, { expiresIn })
 }
 
 export function verifyJWT(token: string): any {
