@@ -1,7 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  swcMinify: true,
   
   // Environment variables that should be available on the client
   env: {
@@ -85,6 +84,37 @@ const nextConfig = {
       test: /\.pdf$/,
       use: 'file-loader',
     })
+
+    // Bundle optimization
+    config.optimization = {
+      ...config.optimization,
+      splitChunks: {
+        chunks: 'all',
+        cacheGroups: {
+          vendor: {
+            test: /[\\/]node_modules[\\/]/,
+            name: 'vendors',
+            chunks: 'all',
+          },
+          pdf: {
+            test: /[\\/]node_modules[\\/](pdf-lib|pdf-parse|pdfjs-dist)[\\/]/,
+            name: 'pdf-libs',
+            chunks: 'all',
+            priority: 10,
+          },
+          ui: {
+            test: /[\\/]node_modules[\\/](@headlessui|@heroicons|framer-motion)[\\/]/,
+            name: 'ui-libs',
+            chunks: 'all',
+            priority: 10,
+          },
+        },
+      },
+    }
+
+    // Tree shaking optimization
+    config.optimization.usedExports = true
+    config.optimization.sideEffects = false
 
     return config
   },

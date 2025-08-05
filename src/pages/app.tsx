@@ -1,25 +1,60 @@
-import { useState, useCallback } from 'react'
-import { useDropzone } from 'react-dropzone'
-import { motion, AnimatePresence } from 'framer-motion'
-import toast, { Toaster } from 'react-hot-toast'
 import {
-  ArrowsPointingInIcon,
-  DocumentDuplicateIcon,
-  ScissorsIcon,
-  DocumentTextIcon,
-  DocumentMagnifyingGlassIcon,
-  LockClosedIcon,
-  PhotoIcon,
-  ArrowPathIcon,
-  CloudArrowUpIcon,
-  XMarkIcon,
-  CheckCircleIcon,
+  useCallback,
+  useEffect,
+  useState,
+} from 'react';
+
+import {
+  AnimatePresence,
+  motion,
+} from 'framer-motion';
+import { useDropzone } from 'react-dropzone';
+import toast, { Toaster } from 'react-hot-toast';
+
+import {
   ArrowDownTrayIcon,
+  ArrowPathIcon,
+  ArrowsPointingInIcon,
+  CheckCircleIcon,
+  CloudArrowUpIcon,
+  DocumentDuplicateIcon,
   DocumentIcon,
+  DocumentMagnifyingGlassIcon,
+  DocumentTextIcon,
+  LockClosedIcon,
+  ScissorsIcon,
   SparklesIcon,
   UserCircleIcon,
-  CreditCardIcon,
-} from '@heroicons/react/24/outline'
+  XMarkIcon,
+} from '@heroicons/react/24/outline';
+
+// Import performance optimization components
+const usePDFWorker = () => {
+  // Placeholder for now - will be replaced with actual import
+  return {
+    isProcessing: false,
+    progress: { progress: 0, message: '' },
+    compressPDF: async (file: File, options?: any) => ({ success: false }),
+    mergePDFs: async (files: File[], options?: any) => ({ success: false }),
+    splitPDF: async (file: File, options?: any) => ({ success: false }),
+    addWatermark: async (file: File, options?: any) => ({ success: false }),
+    cancelCurrentTask: () => {},
+    currentTask: null
+  }
+}
+
+const ProgressIndicator = ({ isVisible, progress, message, operation, onCancel }: any) => null
+const ProcessingQueue = ({ items, isVisible, onToggleVisibility }: any) => null
+
+type QueueItem = {
+  id: string
+  fileName: string
+  fileSize: number
+  operation: string
+  status: 'pending' | 'processing' | 'completed' | 'error' | 'paused'
+  progress: number
+  message?: string
+}
 
 type Tool = {
   id: string
@@ -109,6 +144,26 @@ export default function AppDashboard() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [credits, setCredits] = useState(5) // Free tier credits
   const [showUpgrade, setShowUpgrade] = useState(false)
+  const [queueItems, setQueueItems] = useState<QueueItem[]>([])
+  const [showQueue, setShowQueue] = useState(false)
+  const [showProgress, setShowProgress] = useState(false)
+  const [currentProgress, setCurrentProgress] = useState({ progress: 0, message: '' })
+
+  // Initialize PDF worker
+  const pdfWorker = usePDFWorker()
+
+  // Sync worker progress with UI
+  useEffect(() => {
+    if (pdfWorker.isProcessing) {
+      setShowProgress(true)
+      setCurrentProgress({
+        progress: pdfWorker.progress.progress,
+        message: pdfWorker.progress.message
+      })
+    } else {
+      setShowProgress(false)
+    }
+  }, [pdfWorker.isProcessing, pdfWorker.progress])
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const newFiles = acceptedFiles.map(file => ({
@@ -145,38 +200,94 @@ export default function AppDashboard() {
 
     setIsProcessing(true)
 
+    // Add files to processing queue
+    const newQueueItems: QueueItem[] = files
+      .filter(f => f.status === 'pending')
+      .map(f => ({
+        id: f.id,
+        fileName: f.file.name,
+        fileSize: f.file.size,
+        operation: selectedTool.name,
+        status: 'pending' as const,
+        progress: 0
+      }))
+
+    setQueueItems(prev => [...prev, ...newQueueItems])
+    setShowQueue(true)
+
     for (const fileUpload of files) {
       if (fileUpload.status !== 'pending') continue
 
-      setFiles(prev => prev.map(f => 
+      // Update queue item status
+      setQueueItems(prev => prev.map(item =>
+        item.id === fileUpload.id ? { ...item, status: 'processing' } : item
+      ))
+
+      setFiles(prev => prev.map(f =>
         f.id === fileUpload.id ? { ...f, status: 'processing' } : f
       ))
 
       try {
-        const formData = new FormData()
-        formData.append('file', fileUpload.file)
+        let result: any
 
-        const response = await fetch(selectedTool.endpoint, {
-          method: 'POST',
-          body: formData,
-          credentials: 'include',
-        })
-
-        const result = await response.json()
-
-        if (response.ok) {
-          setFiles(prev => prev.map(f => 
-            f.id === fileUpload.id ? { ...f, status: 'completed', result } : f
-          ))
-          setCredits(prev => prev - selectedTool.credits)
-          toast.success(`${selectedTool.name} completed!`)
-        } else {
-          throw new Error(result.error || 'Processing failed')
+        // Try web worker processing for supported operations and smaller files
+        if (fileUpload.file.size < 50 * 1024 * 1024) { // < 50MB
+          if (selectedTool.id === 'compress') {
+            result = await pdfWorker.compressPDF(fileUpload.file, { quality: 'medium' })
+            if (result.success) {
+              const blob = new Blob([result.data], { type: 'application/pdf' })
+              const downloadUrl = URL.createObjectURL(blob)
+              result = { downloadUrl, ...result }
+            }
+          } else if (selectedTool.id === 'watermark') {
+            result = await pdfWorker.addWatermark(fileUpload.file, { text: 'SAMPLE' })
+            if (result.success) {
+              const blob = new Blob([result.data], { type: 'application/pdf' })
+              const downloadUrl = URL.createObjectURL(blob)
+              result = { downloadUrl, ...result }
+            }
+          }
         }
+
+        // Fallback to server processing if web worker failed or not supported
+        if (!result || !result.success) {
+          const formData = new FormData()
+          formData.append('file', fileUpload.file)
+
+          const response = await fetch(selectedTool.endpoint, {
+            method: 'POST',
+            body: formData,
+            credentials: 'include',
+          })
+
+          result = await response.json()
+
+          if (!response.ok) {
+            throw new Error(result.error || 'Processing failed')
+          }
+        }
+
+        // Update file and queue status
+        setFiles(prev => prev.map(f =>
+          f.id === fileUpload.id ? { ...f, status: 'completed', result } : f
+        ))
+
+        setQueueItems(prev => prev.map(item =>
+          item.id === fileUpload.id ? { ...item, status: 'completed', progress: 100 } : item
+        ))
+
+        setCredits(prev => prev - selectedTool.credits)
+        toast.success(`${selectedTool.name} completed!`)
+
       } catch (error: any) {
-        setFiles(prev => prev.map(f => 
+        setFiles(prev => prev.map(f =>
           f.id === fileUpload.id ? { ...f, status: 'error', error: error.message } : f
         ))
+
+        setQueueItems(prev => prev.map(item =>
+          item.id === fileUpload.id ? { ...item, status: 'error', message: error.message } : item
+        ))
+
         toast.error(error.message)
       }
     }
@@ -200,6 +311,40 @@ export default function AppDashboard() {
   const resetTool = () => {
     setSelectedTool(null)
     setFiles([])
+    setQueueItems([])
+  }
+
+  // Queue management functions
+  const removeQueueItem = (id: string) => {
+    setQueueItems(prev => prev.filter(item => item.id !== id))
+    removeFile(id)
+  }
+
+  const clearCompletedItems = () => {
+    setQueueItems(prev => prev.filter(item => item.status !== 'completed'))
+  }
+
+  const pauseResumeItem = (id: string) => {
+    setQueueItems(prev => prev.map(item =>
+      item.id === id
+        ? { ...item, status: item.status === 'paused' ? 'pending' : 'paused' }
+        : item
+    ))
+  }
+
+  const retryItem = (id: string) => {
+    setQueueItems(prev => prev.map(item =>
+      item.id === id ? { ...item, status: 'pending', progress: 0 } : item
+    ))
+    setFiles(prev => prev.map(f =>
+      f.id === id ? { ...f, status: 'pending', error: undefined } : f
+    ))
+  }
+
+  const calculateTotalProgress = () => {
+    if (queueItems.length === 0) return 0
+    const totalProgress = queueItems.reduce((sum, item) => sum + item.progress, 0)
+    return totalProgress / queueItems.length
   }
 
   return (
@@ -229,7 +374,7 @@ export default function AppDashboard() {
                 Upgrade
               </button>
               
-              <button className="p-2 hover:bg-gray-100 rounded-lg">
+              <button className="p-2 hover:bg-gray-100 rounded-lg" title="User Profile">
                 <UserCircleIcon className="h-6 w-6 text-gray-600" />
               </button>
             </div>
@@ -357,6 +502,7 @@ export default function AppDashboard() {
                             <button
                               onClick={() => downloadResult(fileUpload)}
                               className="p-1 hover:bg-gray-200 rounded"
+                              title="Download processed file"
                             >
                               <ArrowDownTrayIcon className="h-5 w-5 text-gray-600" />
                             </button>
@@ -369,6 +515,7 @@ export default function AppDashboard() {
                           <button
                             onClick={() => removeFile(fileUpload.id)}
                             className="p-1 hover:bg-gray-200 rounded"
+                            title="Remove file"
                           >
                             <XMarkIcon className="h-5 w-5 text-gray-600" />
                           </button>
@@ -425,6 +572,7 @@ export default function AppDashboard() {
                 <button
                   onClick={() => setShowUpgrade(false)}
                   className="p-2 hover:bg-gray-100 rounded-lg"
+                  title="Close upgrade modal"
                 >
                   <XMarkIcon className="h-5 w-5 text-gray-500" />
                 </button>
@@ -474,6 +622,35 @@ export default function AppDashboard() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Progress Indicator */}
+      <ProgressIndicator
+        isVisible={showProgress}
+        progress={currentProgress.progress}
+        message={currentProgress.message}
+        operation={selectedTool?.name || 'Processing'}
+        onCancel={() => {
+          pdfWorker.cancelCurrentTask()
+          setShowProgress(false)
+        }}
+        fileInfo={files.find(f => f.status === 'processing') ? {
+          name: files.find(f => f.status === 'processing')!.file.name,
+          size: files.find(f => f.status === 'processing')!.file.size,
+          type: files.find(f => f.status === 'processing')!.file.type
+        } : undefined}
+      />
+
+      {/* Processing Queue */}
+      <ProcessingQueue
+        items={queueItems}
+        isVisible={showQueue}
+        onToggleVisibility={() => setShowQueue(!showQueue)}
+        onRemoveItem={removeQueueItem}
+        onClearCompleted={clearCompletedItems}
+        onPauseResume={pauseResumeItem}
+        onRetry={retryItem}
+        totalProgress={calculateTotalProgress()}
+      />
     </div>
   )
 }

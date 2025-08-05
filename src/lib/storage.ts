@@ -1,9 +1,9 @@
+import crypto from 'crypto';
 // TODO: Install @aws-sdk/client-s3 and @aws-sdk/s3-request-presigner
 // import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
 // import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
-import fs from 'fs/promises'
-import path from 'path'
-import crypto from 'crypto'
+import fs from 'fs/promises';
+import path from 'path';
 
 // Initialize S3 client if AWS credentials are provided
 const s3Client = null // TODO: Implement when AWS SDK is installed
@@ -185,7 +185,7 @@ export async function cleanupOldFiles(olderThanDays: number = 1): Promise<void> 
 
   try {
     // Clean database records
-    const deletedFiles = await prisma.file.deleteMany({
+    const deletedFiles = await prisma?.file.deleteMany({
       where: {
         expiresAt: {
           lt: new Date()
@@ -193,7 +193,7 @@ export async function cleanupOldFiles(olderThanDays: number = 1): Promise<void> 
       }
     })
 
-    console.log(`Cleaned up ${deletedFiles.count} expired files`)
+    console.log(`Cleaned up ${deletedFiles?.count || 0} expired files`)
 
     // For local storage, scan and delete old files
     if (!storageClient) {

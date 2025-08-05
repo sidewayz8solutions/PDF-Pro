@@ -1,8 +1,16 @@
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
-import mammoth from 'mammoth'
-import xlsx from 'xlsx'
-import sharp from 'sharp'
-import { Document as DocxDocument, Packer, Paragraph, TextRun } from 'docx'
+import {
+  Document as DocxDocument,
+  Packer,
+  Paragraph,
+  TextRun,
+} from 'docx';
+import mammoth from 'mammoth';
+import {
+  PDFDocument,
+  rgb,
+  StandardFonts,
+} from 'pdf-lib';
+import sharp from 'sharp';
 
 export interface ConversionOptions {
   // General options
@@ -208,13 +216,24 @@ export class PdfConverter {
     excelBuffer: Buffer,
     options: ConversionOptions
   ): Promise<Buffer> {
-    const workbook = xlsx.read(excelBuffer, { type: 'buffer' })
+    const ExcelJS = require('exceljs')
+    const workbook = new ExcelJS.Workbook()
+    await workbook.xlsx.load(excelBuffer)
+
     const pdfDoc = await PDFDocument.create()
     this.setMetadata(pdfDoc, options)
 
-    for (const sheetName of workbook.SheetNames) {
-      const worksheet = workbook.Sheets[sheetName]
-      const data = xlsx.utils.sheet_to_json(worksheet, { header: 1 }) as any[][]
+    for (const worksheet of workbook.worksheets) {
+      const data: any[][] = []
+
+      // Convert worksheet to array format
+      worksheet.eachRow((row: any, rowNumber: number) => {
+        const rowData: any[] = []
+        row.eachCell((cell: any, colNumber: number) => {
+          rowData[colNumber - 1] = cell.value
+        })
+        data.push(rowData)
+      })
 
       if (data.length === 0) continue
 

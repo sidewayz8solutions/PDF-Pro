@@ -1,6 +1,12 @@
-import { useState, useCallback } from 'react'
-import { useAuth } from './useAuth'
-import toast from 'react-hot-toast'
+import {
+  useCallback,
+  useState,
+} from 'react';
+
+import toast from 'react-hot-toast';
+
+import { useAuth } from './useAuth';
+import { usePDFWorker } from './useWebWorker';
 
 interface ProcessingOptions {
   quality?: 'low' | 'medium' | 'high'
@@ -68,6 +74,7 @@ interface ProcessingResult {
   downloadUrl?: string
   originalSize?: number
   processedSize?: number
+  compressionRatio?: number
   processingTime?: number
   remainingCredits?: number
   error?: string
@@ -83,11 +90,25 @@ interface ProcessingState {
 
 export function usePdfTools() {
   const { user, hasCredits, canAccessFeature, refreshSession } = useAuth()
+  const pdfWorker = usePDFWorker()
   const [processingState, setProcessingState] = useState<ProcessingState>({
     isProcessing: false,
     progress: 0,
     currentOperation: null,
     error: null,
+  })
+  const [useWebWorkers, setUseWebWorkers] = useState(true)
+
+  // Sync web worker progress with local state
+  useState(() => {
+    if (pdfWorker.isProcessing) {
+      setProcessingState(prev => ({
+        ...prev,
+        isProcessing: true,
+        progress: pdfWorker.progress.progress,
+        currentOperation: pdfWorker.currentTask,
+      }))
+    }
   })
 
   // Generic processing function
@@ -175,8 +196,49 @@ export function usePdfTools() {
     file: File,
     options: ProcessingOptions = {}
   ): Promise<ProcessingResult> => {
+    if (useWebWorkers && file.size < 50 * 1024 * 1024) { // Use web worker for files < 50MB
+      try {
+        setProcessingState({
+          isProcessing: true,
+          progress: 0,
+          currentOperation: 'compress',
+          error: null,
+        })
+
+        const result = await pdfWorker.compressPDF(file, options)
+
+        if (result.success) {
+          setProcessingState({
+            isProcessing: false,
+            progress: 100,
+            currentOperation: null,
+            error: null,
+          })
+
+          // Create download blob
+          const blob = new Blob([result.data], { type: 'application/pdf' })
+          const downloadUrl = URL.createObjectURL(blob)
+
+          toast.success('PDF compressed successfully!')
+          return {
+            success: true,
+            downloadUrl,
+            originalSize: result.originalSize,
+            processedSize: result.compressedSize,
+            compressionRatio: result.compressionRatio
+          }
+        } else {
+          throw new Error(result.error || 'Compression failed')
+        }
+      } catch (error) {
+        // Fallback to server processing
+        console.warn('Web worker compression failed, falling back to server:', error)
+        setUseWebWorkers(false)
+      }
+    }
+
     return processFile('/api/pdf/compress', file, options, 1)
-  }, [processFile])
+  }, [processFile, useWebWorkers, pdfWorker, setProcessingState])
 
   // Add watermark
   const addWatermark = useCallback(async (

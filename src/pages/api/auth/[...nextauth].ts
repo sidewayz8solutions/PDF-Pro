@@ -1,10 +1,11 @@
-import NextAuth, { NextAuthOptions } from 'next-auth'
-import CredentialsProvider from 'next-auth/providers/credentials'
-import GoogleProvider from 'next-auth/providers/google'
-import { PrismaAdapter } from '@next-auth/prisma-adapter'
-import { prisma } from '@/lib/prisma'
-import bcrypt from 'bcryptjs'
-import { generateApiKey } from '@/lib/utils'
+import bcrypt from 'bcryptjs';
+import NextAuth, { NextAuthOptions } from 'next-auth';
+import CredentialsProvider from 'next-auth/providers/credentials';
+import GoogleProvider from 'next-auth/providers/google';
+
+import { prisma } from '@/lib/prisma';
+import { generateApiKey } from '@/lib/utils';
+import { PrismaAdapter } from '@next-auth/prisma-adapter';
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
@@ -81,6 +82,9 @@ export const authOptions: NextAuthOptions = {
               apiAccess: false,
               priorityProcessing: false,
               customBranding: false,
+              stripeSubscriptionId: `free_${existingUser.id}`,
+              stripePriceId: 'price_free',
+              stripeCurrentPeriodEnd: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
             }
           })
         }
@@ -126,6 +130,9 @@ export const authOptions: NextAuthOptions = {
           apiAccess: false,
           priorityProcessing: false,
           customBranding: false,
+          stripeSubscriptionId: `free_${user.id}`,
+          stripePriceId: 'price_free',
+          stripeCurrentPeriodEnd: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
         }
       })
 

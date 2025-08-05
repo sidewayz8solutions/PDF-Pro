@@ -1,12 +1,29 @@
-import type { NextApiRequest, NextApiResponse } from 'next'
-import formidable from 'formidable'
-import { PdfSecurity } from '@/lib/pdf/PDFSecurity'
-import { prisma, createUsageRecord, updateUserCredits } from '@/lib/prisma'
-import { withAuth, withApiKey, checkCredits, deductCredits, canAccessFeature, validateFileSize } from '@/lib/auth'
-import { uploadToS3, generateUniqueFilename } from '@/lib/storage'
-import { AuthenticatedRequest } from '@/types/types'
-import fs from 'fs/promises'
-import path from 'path'
+import formidable from 'formidable';
+import fs from 'fs/promises';
+import type {
+  NextApiRequest,
+  NextApiResponse,
+} from 'next';
+import path from 'path';
+
+import {
+  canAccessFeature,
+  checkCredits,
+  deductCredits,
+  validateFileSize,
+  withApiKey,
+  withAuth,
+} from '@/lib/auth';
+import { PdfSecurity } from '@/lib/pdf/PDFSecurity';
+import {
+  createUsageRecord,
+  prisma,
+} from '@/lib/prisma';
+import {
+  generateUniqueFilename,
+  uploadToS3,
+} from '@/lib/storage';
+import { AuthenticatedRequest } from '@/types/types';
 
 export const config = {
   api: {
@@ -113,15 +130,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     
     const result = await pdfSecurity.addSecurity(fileBuffer, {
       watermark: {
-        text: watermarkOptions.text!,
+        type: 'text',
+        content: watermarkOptions.text!,
         position: watermarkOptions.position!,
         opacity: watermarkOptions.opacity!,
         fontSize: watermarkOptions.fontSize!,
         color: hexToRgb(watermarkOptions.color!),
         rotation: watermarkOptions.rotation!,
-        pages: watermarkOptions.pages === 'all' ? undefined : 
-               watermarkOptions.pages === 'first' ? [1] :
-               watermarkOptions.pages === 'last' ? [-1] : undefined,
+        repeat: watermarkOptions.pages === 'all',
       },
     })
     

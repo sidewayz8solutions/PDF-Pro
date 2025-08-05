@@ -1,7 +1,11 @@
-import { NextApiRequest, NextApiResponse } from 'next'
-import { buffer } from 'micro'
-import Stripe from 'stripe'
-import { prisma } from '../../../lib/prisma'
+import { buffer } from 'micro';
+import {
+  NextApiRequest,
+  NextApiResponse,
+} from 'next';
+import Stripe from 'stripe';
+
+import { prisma } from '../../../lib/prisma';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2023-10-16',
@@ -128,7 +132,9 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
           stripePriceId: priceId,
           stripeCurrentPeriodEnd: new Date(subscription.current_period_end * 1000),
           plan: plan as any,
-          status: subscription.status === 'active' ? 'ACTIVE' : 'INACTIVE',
+          status: subscription.status === 'active' ? 'ACTIVE' :
+                  subscription.status === 'past_due' ? 'PAST_DUE' :
+                  subscription.status === 'paused' ? 'PAUSED' : 'CANCELED',
           monthlyCredits: credits,
           maxFileSize: plan === 'STARTER' ? 50 : plan === 'PROFESSIONAL' ? 200 : plan === 'BUSINESS' ? 1000 : 10,
         },
@@ -137,7 +143,9 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
           stripePriceId: priceId,
           stripeCurrentPeriodEnd: new Date(subscription.current_period_end * 1000),
           plan: plan as any,
-          status: subscription.status === 'active' ? 'ACTIVE' : 'INACTIVE',
+          status: subscription.status === 'active' ? 'ACTIVE' :
+                  subscription.status === 'past_due' ? 'PAST_DUE' :
+                  subscription.status === 'paused' ? 'PAUSED' : 'CANCELED',
           monthlyCredits: credits,
           maxFileSize: plan === 'STARTER' ? 50 : plan === 'PROFESSIONAL' ? 200 : plan === 'BUSINESS' ? 1000 : 10,
         },
@@ -161,7 +169,9 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
       await prisma.subscription.update({
         where: { id: existingSubscription.id },
         data: {
-          status: subscription.status === 'active' ? 'ACTIVE' : 'INACTIVE',
+          status: subscription.status === 'active' ? 'ACTIVE' :
+                  subscription.status === 'past_due' ? 'PAST_DUE' :
+                  subscription.status === 'paused' ? 'PAUSED' : 'CANCELED',
           stripeCurrentPeriodEnd: new Date(subscription.current_period_end * 1000),
         },
       })

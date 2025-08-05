@@ -1,13 +1,21 @@
-import type { NextApiRequest, NextApiResponse } from 'next'
-import formidable from 'formidable'
-import { PdfProcessor } from '@/lib/pdf/PdfProcessor'
-import { prisma } from '@/lib/prisma'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '../auth/[...nextauth]'
-import fs from 'fs/promises'
-import path from 'path'
-import crypto from 'crypto'
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
+import crypto from 'crypto';
+import formidable from 'formidable';
+import fs from 'fs/promises';
+import type {
+  NextApiRequest,
+  NextApiResponse,
+} from 'next';
+import { getServerSession } from 'next-auth';
+import path from 'path';
+
+import { PdfProcessor } from '@/lib/pdf/PDFProcessor';
+import { prisma } from '@/lib/prisma';
+import {
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
+
+import { authOptions } from '../auth/[...nextauth]';
 
 export const config = {
   api: {

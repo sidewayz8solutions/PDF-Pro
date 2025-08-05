@@ -1,12 +1,29 @@
-import type { NextApiRequest, NextApiResponse } from 'next'
-import formidable from 'formidable'
-import { PdfSecurity } from '@/lib/pdf/PDFSecurity'
-import { prisma, createUsageRecord } from '@/lib/prisma'
-import { withAuth, withApiKey, checkCredits, deductCredits, canAccessFeature, validateFileSize } from '@/lib/auth'
-import { uploadToS3, generateUniqueFilename } from '@/lib/storage'
-import { AuthenticatedRequest } from '@/types/types'
-import fs from 'fs/promises'
-import path from 'path'
+import formidable from 'formidable';
+import fs from 'fs/promises';
+import type {
+  NextApiRequest,
+  NextApiResponse,
+} from 'next';
+import path from 'path';
+
+import {
+  canAccessFeature,
+  checkCredits,
+  deductCredits,
+  validateFileSize,
+  withApiKey,
+  withAuth,
+} from '@/lib/auth';
+import { PdfSecurity } from '@/lib/pdf/PDFSecurity';
+import {
+  createUsageRecord,
+  prisma,
+} from '@/lib/prisma';
+import {
+  generateUniqueFilename,
+  uploadToS3,
+} from '@/lib/storage';
+import { AuthenticatedRequest } from '@/types/types';
 
 export const config = {
   api: {
@@ -132,15 +149,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       userPassword: options.userPassword,
       ownerPassword: options.ownerPassword,
       permissions: {
-        print: options.permissions?.printing === 'none' ? false : 
-               options.permissions?.printing === 'lowQuality' ? 'lowQuality' :
-               options.permissions?.printing === 'highQuality' ? 'highQuality' : false,
-        modify: options.permissions?.modifying || false,
-        copy: options.permissions?.copying || false,
-        annotate: options.permissions?.annotating || false,
-        fillForms: options.permissions?.fillingForms || false,
-        accessibility: options.permissions?.contentAccessibility !== false,
-        assemble: options.permissions?.documentAssembly || false,
+        printing: options.permissions?.printing === 'none' ? false :
+                 options.permissions?.printing === 'lowQuality' ? 'lowResolution' :
+                 options.permissions?.printing === 'highQuality' ? 'highResolution' : false,
+        modifying: options.permissions?.modifying || false,
+        copying: options.permissions?.copying || false,
+        annotating: options.permissions?.annotating || false,
+        fillingForms: options.permissions?.fillingForms || false,
+        contentAccessibility: options.permissions?.contentAccessibility !== false,
+        documentAssembly: options.permissions?.documentAssembly || false,
       },
     })
     
