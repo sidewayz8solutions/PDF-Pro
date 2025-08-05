@@ -11,6 +11,12 @@ const nextConfig = {
 
   // Image optimization
   images: {
+    formats: ['image/avif', 'image/webp'],
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    minimumCacheTTL: 31536000, // 1 year
+    dangerouslyAllowSVG: false,
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
     domains: [
       'localhost',
       'lh3.googleusercontent.com', // Google OAuth
@@ -18,18 +24,48 @@ const nextConfig = {
       's3.amazonaws.com', // S3 storage
       'storage.googleapis.com', // Google Cloud Storage
     ],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**.amazonaws.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.supabase.co',
+        port: '',
+        pathname: '/storage/**',
+      },
+    ],
   },
 
-  // Headers for security and CORS
+  // Headers for security, performance, and CORS
   async headers() {
+    const isDev = process.env.NODE_ENV === 'development';
+    const allowedOrigin = isDev ? 'http://localhost:3000' : process.env.NEXT_PUBLIC_APP_URL || 'https://pdfpro.com';
+
     return [
       {
         source: '/api/:path*',
         headers: [
           { key: 'Access-Control-Allow-Credentials', value: 'true' },
-          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Access-Control-Allow-Origin', value: allowedOrigin },
           { key: 'Access-Control-Allow-Methods', value: 'GET,OPTIONS,PATCH,DELETE,POST,PUT' },
-          { key: 'Access-Control-Allow-Headers', value: 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, X-Api-Key' },
+          { key: 'Access-Control-Allow-Headers', value: 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, X-Api-Key, Authorization' },
+          { key: 'Access-Control-Max-Age', value: '86400' },
+        ],
+      },
+      {
+        source: '/static/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
+      {
+        source: '/_next/static/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
         ],
       },
       {
@@ -37,9 +73,13 @@ const nextConfig = {
         headers: [
           { key: 'X-DNS-Prefetch-Control', value: 'on' },
           { key: 'X-XSS-Protection', value: '1; mode=block' },
-          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+          { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
-          { key: 'Referrer-Policy', value: 'origin-when-cross-origin' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), payment=()' },
+          ...(isDev ? [] : [
+            { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains; preload' },
+          ]),
         ],
       },
     ]
@@ -119,18 +159,39 @@ const nextConfig = {
     return config
   },
 
-  // Experimental features
+  // Experimental features for performance
   experimental: {
-    // Enable server actions when ready
+    optimizeCss: true,
+    optimizePackageImports: ['@heroicons/react', 'framer-motion', 'react-hot-toast', '@headlessui/react'],
+    turbo: {
+      rules: {
+        '*.svg': {
+          loaders: ['@svgr/webpack'],
+          as: '*.js',
+        },
+      },
+    },
+    // Enable when ready
     // serverActions: true,
   },
 
   // Production optimizations
-  ...(process.env.NODE_ENV === 'production' && {
-    compress: true,
-    poweredByHeader: false,
-    generateEtags: false,
-  }),
+  swcMinify: true,
+  compress: true,
+  poweredByHeader: false,
+  generateEtags: true,
+  productionBrowserSourceMaps: false,
+
+  // Compiler optimizations
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production' ? {
+      exclude: ['error', 'warn'],
+    } : false,
+    styledComponents: true,
+  },
+
+  // Output configuration for deployment
+  output: process.env.BUILD_STANDALONE === 'true' ? 'standalone' : undefined,
 }
 
 module.exports = nextConfig

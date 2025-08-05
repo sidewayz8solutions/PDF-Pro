@@ -118,3 +118,93 @@ public/uploads/
 
 # Prisma
 prisma/migrations/dev.db*
+
+# PDF-Pro Specific
+# Test PDFs and generated files
+test-pdfs/*.pdf
+processed-files/
+temp-files/
+*.pdf.tmp
+
+# AWS and cloud credentials (extra safety)
+.aws/
+credentials
+config
+
+# Supabase local development
+supabase/.env
+supabase/.env.local
+.supabase/
+
+# TypeScript build info
+*.tsbuildinfo
+.tsbuildinfo
+
+# ESLint cache
+.eslintcache
+
+# Prettier cache
+.prettiercache
+
+# Turbo
+.turbo
+
+# Vercel
+.vercel
+
+# Sentry
+.sentryclirc
+
+# Bundle analyzer
+.next/analyze/
+
+# Storybook
+storybook-static/
+
+# Testing
+coverage/
+.nyc_output
+junit.xml
+
+# Local development
+.env.development
+.env.staging
+.env.production
+
+# Backup files
+*.backup
+*.bak
+*.orig
+
+# Lock files (keep package-lock.json but ignore others)
+yarn.lock
+pnpm-lock.yaml
+
+# Editor directories and files
+.vscode/settings.json
+.vscode/launch.json
+.vscode/extensions.json
+*.sublime-project
+*.sublime-workspace
+
+# MacOS
+.AppleDouble
+.LSOverride
+Icon
+._*
+
+# Windows
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
