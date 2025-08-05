@@ -1,11 +1,21 @@
-import type { NextApiRequest, NextApiResponse } from 'next'
-import formidable from 'formidable'
-import { PDFDocument } from 'pdf-lib'
-import pdfParse from 'pdf-parse'
-import { prisma, createUsageRecord } from '@/lib/prisma'
-import { withAuth, withApiKey, checkCredits, deductCredits, canAccessFeature, validateFileSize } from '@/lib/auth'
-import { AuthenticatedRequest } from '@/types/types'
-import fs from 'fs/promises'
+import formidable from 'formidable';
+import fs from 'fs/promises';
+import type {
+  NextApiRequest,
+  NextApiResponse,
+} from 'next';
+import { PDFDocument } from 'pdf-lib';
+import pdfParse from 'pdf-parse';
+
+import {
+  canAccessFeature,
+  checkCredits,
+  deductCredits,
+  validateFileSize,
+  withApiKey,
+  withAuth,
+} from '@/lib/auth';
+import { AuthenticatedRequest } from '@/types/types';
 
 export const config = {
   api: {

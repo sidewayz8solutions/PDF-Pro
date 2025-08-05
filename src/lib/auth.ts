@@ -1,11 +1,61 @@
-import { NextApiRequest, NextApiResponse } from 'next'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/pages/api/auth/[...nextauth]'
-import jwt from 'jsonwebtoken'
-import bcrypt from 'bcryptjs'
-import crypto from 'crypto'
-import { prisma, getUserWithSubscription, validateApiKey, updateApiKeyUsage } from './prisma'
-import { AuthenticatedRequest } from '@/types/types'
+import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
+import jwt from 'jsonwebtoken';
+import {
+  NextApiRequest,
+  NextApiResponse,
+} from 'next';
+import { getServerSession } from 'next-auth';
+
+import { authOptions } from '@/pages/api/auth/[...nextauth]';
+import { AuthenticatedRequest } from '@/types/types';
+
+import { supabaseAdmin } from './supabase';
+
+// Helper functions for Supabase
+async function getUserWithSubscription(userId: string) {
+  const { data: user } = await supabaseAdmin
+    .from('users')
+    .select('*, subscriptions(*)')
+    .eq('id', userId)
+    .single();
+
+  return user ? {
+    ...user,
+    subscription: user.subscriptions?.[0] || null
+  } : null;
+}
+
+async function validateApiKey(key: string) {
+  const { data: apiKey } = await supabaseAdmin
+    .from('api_keys')
+    .select('*, users(*, subscriptions(*))')
+    .eq('key', key)
+    .eq('is_active', true)
+    .single();
+
+  if (!apiKey) return null;
+
+  return {
+    id: apiKey.id,
+    isActive: apiKey.is_active,
+    user: {
+      id: apiKey.users.id,
+      email: apiKey.users.email,
+      subscription: apiKey.users.subscriptions?.[0] || null
+    }
+  };
+}
+
+async function updateApiKeyUsage(apiKeyId: string) {
+  await supabaseAdmin
+    .from('api_keys')
+    .update({
+      last_used_at: new Date().toISOString(),
+      requests_used: supabaseAdmin.rpc('increment', { x: 1 })
+    })
+    .eq('id', apiKeyId);
+}
 
 // JWT utilities
 export function generateJWT(payload: any, expiresIn: string = '7d'): string {
@@ -185,12 +235,8 @@ export async function checkCredits(userId: string, requiredCredits: number = 1):
 }
 
 export async function deductCredits(userId: string, credits: number = 1): Promise<void> {
-  await prisma.user.update({
-    where: { id: userId },
-    data: {
-      creditsUsed: { increment: credits },
-    },
-  })
+  // TODO: Implement Supabase credit deduction
+  console.log('Would deduct credits for user:', userId, 'credits:', credits);
 }
 
 // Rate limiting utilities

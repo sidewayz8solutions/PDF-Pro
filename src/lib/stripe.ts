@@ -1,7 +1,9 @@
-import type { NextApiRequest, NextApiResponse } from 'next'
-import { buffer } from 'micro'
-import Stripe from 'stripe'
-import { prisma } from '@/lib/prisma'
+import { buffer } from 'micro';
+import type {
+  NextApiRequest,
+  NextApiResponse,
+} from 'next';
+import Stripe from 'stripe';
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -50,24 +52,8 @@ export default async function handler(
   }
 
   try {
-    switch (event.type) {
-      case 'checkout.session.completed': {
-        const session = event.data.object as Stripe.Checkout.Session
-        
-        if (session.mode === 'subscription') {
-          const subscription = await stripe.subscriptions.retrieve(
-            session.subscription as string
-          )
-
-          const priceId = subscription.items.data[0].price.id
-          const planDetails = PLAN_MAPPING[priceId]
-
-          if (!planDetails) {
-            throw new Error(`Unknown price ID: ${priceId}`)
-          }
-
-          // Create or update user subscription
-          await prisma.subscription.upsert({
+    // TODO: Implement Supabase webhook handlers
+    console.log('Stripe webhook received:', event.type);
             where: {
               userId: session.client_reference_id!,
             },

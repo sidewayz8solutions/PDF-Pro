@@ -107,7 +107,7 @@ const nextConfig = {
   },
 
   // Webpack configuration
-  webpack: (config, { isServer }) => {
+  webpack: (config, { isServer, dev }) => {
     // Fix for pdf-lib and other node modules
     if (!isServer) {
       config.resolve.fallback = {
@@ -125,58 +125,54 @@ const nextConfig = {
       use: 'file-loader',
     })
 
-    // Bundle optimization
-    config.optimization = {
-      ...config.optimization,
-      splitChunks: {
-        chunks: 'all',
-        cacheGroups: {
-          vendor: {
-            test: /[\\/]node_modules[\\/]/,
-            name: 'vendors',
-            chunks: 'all',
-          },
-          pdf: {
-            test: /[\\/]node_modules[\\/](pdf-lib|pdf-parse|pdfjs-dist)[\\/]/,
-            name: 'pdf-libs',
-            chunks: 'all',
-            priority: 10,
-          },
-          ui: {
-            test: /[\\/]node_modules[\\/](@headlessui|@heroicons|framer-motion)[\\/]/,
-            name: 'ui-libs',
-            chunks: 'all',
-            priority: 10,
+    // Bundle optimization (only in production)
+    if (process.env.NODE_ENV === 'production') {
+      config.optimization = {
+        ...config.optimization,
+        splitChunks: {
+          chunks: 'all',
+          cacheGroups: {
+            default: false,
+            vendors: false,
+            vendor: {
+              test: /[\\/]node_modules[\\/]/,
+              name: 'vendors',
+              chunks: 'all',
+              priority: 10,
+              enforce: true,
+            },
+            pdf: {
+              test: /[\\/]node_modules[\\/](pdf-lib|pdf-parse|pdfjs-dist)[\\/]/,
+              name: 'pdf-libs',
+              chunks: 'all',
+              priority: 20,
+              enforce: true,
+            },
+            ui: {
+              test: /[\\/]node_modules[\\/](@headlessui|@heroicons|framer-motion)[\\/]/,
+              name: 'ui-libs',
+              chunks: 'all',
+              priority: 15,
+              enforce: true,
+            },
           },
         },
-      },
+        // Remove conflicting optimization settings
+        sideEffects: false,
+      }
     }
-
-    // Tree shaking optimization
-    config.optimization.usedExports = true
-    config.optimization.sideEffects = false
 
     return config
   },
 
   // Experimental features for performance
   experimental: {
-    optimizeCss: true,
     optimizePackageImports: ['@heroicons/react', 'framer-motion', 'react-hot-toast', '@headlessui/react'],
-    turbo: {
-      rules: {
-        '*.svg': {
-          loaders: ['@svgr/webpack'],
-          as: '*.js',
-        },
-      },
-    },
     // Enable when ready
     // serverActions: true,
   },
 
   // Production optimizations
-  swcMinify: true,
   compress: true,
   poweredByHeader: false,
   generateEtags: true,

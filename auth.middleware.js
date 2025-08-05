@@ -1,6 +1,4 @@
-import { NextApiRequest, NextApiResponse } from 'next'
-import jwt from 'jsonwebtoken'
-import { prisma } from '@/lib/prisma'
+import jwt from 'jsonwebtoken';
 
 /**
  * @typedef {import('next').NextApiRequest & {

@@ -7,10 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev",
-    "prisma:studio": "prisma studio",
-    "setup": "npm install && npx prisma generate && npx prisma migrate dev",
+    "setup": "npm install",
     "stripe:listen": "stripe listen --forward-to localhost:3000/api/webhooks/stripe"
   },
   "dependencies": {
@@ -18,8 +15,8 @@
     "@aws-sdk/s3-request-presigner": "^3.859.0",
     "@headlessui/react": "^1.7.17",
     "@heroicons/react": "^2.0.18",
-    "@next-auth/prisma-adapter": "^1.0.7",
-    "@prisma/client": "^6.13.0",
+
+
     "@react-pdf/renderer": "^3.1.14",
     "@stripe/stripe-js": "^2.2.0",
     "@supabase/supabase-js": "^2.53.0",
@@ -30,6 +27,7 @@
     "aws-sdk": "^2.1513.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
+    "critters": "^0.0.23",
     "docx": "^8.5.0",
     "exceljs": "^4.4.0",
     "express-rate-limit": "^8.0.1",
@@ -75,7 +73,7 @@
     "eslint-config-next": "14.0.4",
     "pdfjs-dist": "^5.4.54",
     "postcss": "^8.4.32",
-    "prisma": "^6.13.0",
+
     "react-pdf": "^10.0.1",
     "tailwindcss": "^3.3.6",
     "typescript": "^5.3.3"

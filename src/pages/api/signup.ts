@@ -1,7 +1,10 @@
-import type { NextApiRequest, NextApiResponse } from 'next'
-import { prisma } from '@/lib/prisma'
-import { hashPassword, generateApiKey } from '@/utils'
-import { z } from 'zod'
+import type {
+  NextApiRequest,
+  NextApiResponse,
+} from 'next';
+import { z } from 'zod';
+
+import { generateApiKey } from '@/lib/utils';
 
 const signupSchema = z.object({
   name: z.string().min(2).max(50),
@@ -18,68 +21,87 @@ export default async function handler(
   }
 
   try {
+    const { supabaseAdmin } = await import('@/lib/supabase');
+    const bcrypt = await import('bcryptjs');
+
     // Validate input
     const result = signupSchema.safeParse(req.body)
-    
+
     if (!result.success) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Invalid input',
-        details: result.error.issues 
+        details: result.error.issues
       })
     }
 
     const { name, email, password } = result.data
 
     // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
-    })
+    const { data: existingUser } = await supabaseAdmin
+      .from('users')
+      .select('id')
+      .eq('email', email)
+      .single();
 
     if (existingUser) {
       return res.status(400).json({ error: 'Email already registered' })
     }
 
     // Hash password
-    const hashedPassword = await hashPassword(password)
+    const hashedPassword = await bcrypt.hash(password, 12)
 
-    // Create user with free subscription
-    const user = await prisma.user.create({
-      data: {
+    // Create user
+    const { data: user, error: userError } = await supabaseAdmin
+      .from('users')
+      .insert({
         name,
         email,
         password: hashedPassword,
         provider: 'credentials',
-        subscription: {
-          create: {
-            plan: 'FREE',
-            status: 'ACTIVE',
-            monthlyCredits: 5,
-            maxFileSize: 10,
-            apiAccess: false,
-            priorityProcessing: false,
-            customBranding: false,
-            stripeSubscriptionId: '',
-            stripePriceId: '',
-            stripeCurrentPeriodEnd: new Date(),
-          },
-        },
-      },
-      include: {
-        subscription: true,
-      },
-    })
+      })
+      .select()
+      .single();
+
+    if (userError || !user) {
+      throw new Error('Failed to create user');
+    }
+
+    // Create free subscription
+    const { error: subscriptionError } = await supabaseAdmin
+      .from('subscriptions')
+      .insert({
+        user_id: user.id,
+        plan: 'FREE',
+        status: 'ACTIVE',
+        monthly_credits: 5,
+        max_file_size: 10,
+        api_access: false,
+        priority_processing: false,
+        custom_branding: false,
+        stripe_subscription_id: '',
+        stripe_price_id: '',
+        stripe_current_period_end: new Date().toISOString(),
+      });
+
+    if (subscriptionError) {
+      console.error('Failed to create subscription:', subscriptionError);
+    }
 
     // Create default API key
     const apiKey = generateApiKey()
-    await prisma.apiKey.create({
-      data: {
-        userId: user.id,
+    const { error: apiKeyError } = await supabaseAdmin
+      .from('api_keys')
+      .insert({
+        user_id: user.id,
         name: 'Default API Key',
         key: apiKey,
-        requestsPerMonth: 100,
-        isActive: true,
-      },
-    })
+        requests_per_month: 100,
+        is_active: true,
+      });
+
+    if (apiKeyError) {
+      console.error('Failed to create API key:', apiKeyError);
+    }
 
     // TODO: Send welcome email
     // await sendWelcomeEmail(user.email, user.name)
@@ -98,13 +120,13 @@ export default async function handler(
 
   } catch (error: any) {
     console.error('Signup error:', error)
-    
+
     // Handle Prisma errors
     if (error.code === 'P2002') {
       return res.status(400).json({ error: 'Email already registered' })
     }
-    
-    return res.status(500).json({ 
+
+    return res.status(500).json({
       error: 'Failed to create account',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
     })

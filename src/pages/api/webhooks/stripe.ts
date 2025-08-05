@@ -5,8 +5,6 @@ import {
 } from 'next';
 import Stripe from 'stripe';
 
-import { prisma } from '../../../lib/prisma';
-
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2023-10-16',
 })
@@ -108,23 +106,11 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       credits = 99999
     }
 
-    // Find user
-    const user = await prisma.user.findFirst({
-      where: userId ? { id: userId } : { email: customerEmail! }
-    })
+    // TODO: Find user in Supabase
+    console.log('Would find user:', userId || customerEmail);
 
-    if (user) {
-      // Update user's Stripe customer ID
-      await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          stripeCustomerId: session.customer as string,
-          monthlyCredits: credits,
-        },
-      })
-
-      // Create or update subscription
-      await prisma.subscription.upsert({
+    // TODO: Update user and subscription in Supabase
+    console.log('Would update user subscription with:', { plan, credits });
         where: { userId: user.id },
         create: {
           userId: user.id,
@@ -160,24 +146,11 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   try {
-    const existingSubscription = await prisma.subscription.findUnique({
-      where: { stripeSubscriptionId: subscription.id },
-      include: { user: true },
-    })
+    // TODO: Find subscription in Supabase
+    console.log('Would find subscription:', subscription.id);
 
-    if (existingSubscription) {
-      await prisma.subscription.update({
-        where: { id: existingSubscription.id },
-        data: {
-          status: subscription.status === 'active' ? 'ACTIVE' :
-                  subscription.status === 'past_due' ? 'PAST_DUE' :
-                  subscription.status === 'paused' ? 'PAUSED' : 'CANCELED',
-          stripeCurrentPeriodEnd: new Date(subscription.current_period_end * 1000),
-        },
-      })
-
-      console.log(`Updated subscription status for user ${existingSubscription.userId}: ${subscription.status}`)
-    }
+    // TODO: Update subscription in Supabase
+    console.log('Would update subscription status:', subscription.status);
   } catch (error) {
     console.error('Error handling subscription updated:', error)
   }
@@ -185,31 +158,8 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
 
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
   try {
-    const existingSubscription = await prisma.subscription.findUnique({
-      where: { stripeSubscriptionId: subscription.id },
-      include: { user: true },
-    })
-
-    if (existingSubscription) {
-      // Update subscription to canceled
-      await prisma.subscription.update({
-        where: { id: existingSubscription.id },
-        data: {
-          plan: 'FREE',
-          status: 'CANCELED',
-          monthlyCredits: 5,
-          maxFileSize: 10,
-        },
-      })
-
-      // Reset user's monthly credits
-      await prisma.user.update({
-        where: { id: existingSubscription.userId },
-        data: {
-          monthlyCredits: 5,
-          stripeCustomerId: null,
-        },
-      })
+    // TODO: Cancel subscription in Supabase
+    console.log('Would cancel subscription:', subscription.id);
 
       console.log(`Canceled subscription for user ${existingSubscription.userId}`)
     }

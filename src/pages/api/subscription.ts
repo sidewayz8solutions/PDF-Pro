@@ -1,8 +1,11 @@
-import { NextApiRequest, NextApiResponse } from 'next'
-import { getServerSession } from 'next-auth/next'
-import { authOptions } from './auth/[...nextauth]'
-import Stripe from 'stripe'
-import { prisma } from '../../lib/prisma'
+import {
+  NextApiRequest,
+  NextApiResponse,
+} from 'next';
+import { getServerSession } from 'next-auth/next';
+import Stripe from 'stripe';
+
+import { authOptions } from './auth/[...nextauth]';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2023-10-16',
@@ -13,16 +16,17 @@ export default async function handler(
   res: NextApiResponse
 ) {
   const session = await getServerSession(req, res, authOptions)
-  
+
   if (!session?.user?.email) {
     return res.status(401).json({ error: 'Unauthorized' })
   }
 
   try {
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      include: { subscription: true },
-    })
+    const { data: user, error } = await supabaseAdmin
+      .from('users')
+      .select('*, subscriptions(*)')
+      .eq('email', session.user.email)
+      .single();
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' })
@@ -94,13 +98,13 @@ export default async function handler(
             }
           )
 
-          return res.status(200).json({ 
-            message: 'Subscription reactivated successfully' 
+          return res.status(200).json({
+            message: 'Subscription reactivated successfully'
           })
         } catch (error: any) {
           console.error('Error reactivating subscription:', error)
-          return res.status(500).json({ 
-            error: 'Failed to reactivate subscription' 
+          return res.status(500).json({
+            error: 'Failed to reactivate subscription'
           })
         }
       }
@@ -130,8 +134,8 @@ export default async function handler(
     return res.status(405).json({ error: 'Method not allowed' })
   } catch (error: any) {
     console.error('Subscription API error:', error)
-    return res.status(500).json({ 
-      error: error.message || 'Internal server error' 
+    return res.status(500).json({
+      error: error.message || 'Internal server error'
     })
   }
 }

@@ -1,12 +1,25 @@
-import type { NextApiRequest, NextApiResponse } from 'next'
-import formidable from 'formidable'
-import { PdfSecurity } from '@/lib/pdf/PDFSecurity'
-import { prisma, createUsageRecord } from '@/lib/prisma'
-import { withAuth, withApiKey, checkCredits, deductCredits, canAccessFeature, validateFileSize } from '@/lib/auth'
-import { uploadToS3, generateUniqueFilename } from '@/lib/storage'
-import { AuthenticatedRequest } from '@/types/types'
-import fs from 'fs/promises'
-import path from 'path'
+import formidable from 'formidable';
+import fs from 'fs/promises';
+import type {
+  NextApiRequest,
+  NextApiResponse,
+} from 'next';
+import path from 'path';
+
+import {
+  canAccessFeature,
+  checkCredits,
+  deductCredits,
+  validateFileSize,
+  withApiKey,
+  withAuth,
+} from '@/lib/auth';
+import { PdfSecurity } from '@/lib/pdf/PDFSecurity';
+import {
+  generateUniqueFilename,
+  uploadToS3,
+} from '@/lib/storage';
+import { AuthenticatedRequest } from '@/types/types';
 
 export const config = {
   api: {

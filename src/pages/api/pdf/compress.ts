@@ -9,7 +9,6 @@ import { getServerSession } from 'next-auth';
 import path from 'path';
 
 import { PdfProcessor } from '@/lib/pdf/PDFProcessor';
-import { prisma } from '@/lib/prisma';
 import {
   PutObjectCommand,
   S3Client,
@@ -91,16 +90,19 @@ export default async function handler(
 
     if (session?.user?.id) {
       userId = session.user.id
-      
-      // Check user's subscription and credits
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        include: { subscription: true },
-      })
 
-      if (!user) {
-        return res.status(401).json({ error: 'User not found' })
-      }
+      // Check user's subscription and credits
+      try {
+        const { supabaseAdmin } = await import('@/lib/supabase');
+        const { data: user, error } = await supabaseAdmin
+          .from('users')
+          .select('*, subscriptions(*)')
+          .eq('id', userId)
+          .single();
+
+        if (error || !user) {
+          return res.status(401).json({ error: 'User not found' })
+        }
 
       // Reset monthly credits if needed
       const now = new Date()
@@ -109,22 +111,17 @@ export default async function handler(
         now.getMonth() !== lastReset.getMonth() ||
         now.getFullYear() !== lastReset.getFullYear()
       ) {
-        await prisma.user.update({
-          where: { id: userId },
-          data: {
-            creditsUsed: 0,
-            lastResetDate: now,
-          },
-        })
+        // TODO: Update user credits in Supabase
+        console.log('Would reset credits for user:', userId);
         user.creditsUsed = 0
       }
 
       remainingCredits = (user.subscription?.monthlyCredits || user.monthlyCredits) - user.creditsUsed
 
       if (remainingCredits <= 0) {
-        return res.status(402).json({ 
-          error: 'Insufficient credits', 
-          upgradeUrl: '/pricing' 
+        return res.status(402).json({
+          error: 'Insufficient credits',
+          upgradeUrl: '/pricing'
         })
       }
     }
@@ -139,11 +136,11 @@ export default async function handler(
 
     // Read file
     const fileBuffer = await fs.readFile(file.filepath)
-    
+
     // Process the PDF
     const processor = new PdfProcessor()
     const quality = (fields.quality?.[0] || 'medium') as 'low' | 'medium' | 'high'
-    
+
     const startTime = Date.now()
     const result = await processor.compress(fileBuffer, {
       quality,
@@ -154,51 +151,19 @@ export default async function handler(
 
     // Generate output filename
     const outputFilename = `compressed_${crypto.randomBytes(8).toString('hex')}_${path.basename(file.originalFilename || 'document.pdf')}`
-    
+
     // Upload result
     const downloadUrl = await uploadToS3(result.buffer, outputFilename)
 
     // Record usage if user is logged in
     if (userId) {
-      await prisma.$transaction([
-        prisma.usage.create({
-          data: {
-            userId,
-            operation: 'COMPRESS',
-            credits: 1,
-            inputSize: fileBuffer.length,
-            outputSize: result.buffer.length,
-            processingTime,
-          },
-        }),
-        prisma.user.update({
-          where: { id: userId },
-          data: { creditsUsed: { increment: 1 } },
-        }),
-      ])
+      // TODO: Record usage in Supabase
+      console.log('Would record usage for user:', userId);
     }
 
-    // Create file record
+    // TODO: Create file record in Supabase
     if (userId) {
-      await prisma.file.create({
-        data: {
-          userId,
-          originalName: file.originalFilename || 'document.pdf',
-          filename: outputFilename,
-          size: result.buffer.length,
-          mimeType: 'application/pdf',
-          storageUrl: downloadUrl,
-          status: 'READY',
-          processingData: {
-            operation: 'compress',
-            quality,
-            originalSize: result.originalSize,
-            compressedSize: result.compressedSize,
-            compressionRatio: result.compressionRatio,
-          },
-          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
-        },
-      })
+      console.log('Would create file record for user:', userId);
     }
 
     // Clean up temporary file
@@ -218,7 +183,7 @@ export default async function handler(
 
   } catch (error: any) {
     console.error('Compression error:', error)
-    return res.status(500).json({ 
+    return res.status(500).json({
       error: 'Failed to compress PDF',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
     })

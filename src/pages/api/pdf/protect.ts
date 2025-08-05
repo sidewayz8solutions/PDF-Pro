@@ -16,10 +16,6 @@ import {
 } from '@/lib/auth';
 import { PdfSecurity } from '@/lib/pdf/PDFSecurity';
 import {
-  createUsageRecord,
-  prisma,
-} from '@/lib/prisma';
-import {
   generateUniqueFilename,
   uploadToS3,
 } from '@/lib/storage';
