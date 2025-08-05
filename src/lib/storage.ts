@@ -1,7 +1,4 @@
 import crypto from 'crypto';
-// TODO: Install @aws-sdk/client-s3 and @aws-sdk/s3-request-presigner
-// import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
-// import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import fs from 'fs/promises';
 import path from 'path';
 
