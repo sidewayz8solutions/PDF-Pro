@@ -1,5 +1,4 @@
-import { NextApiRequest } from 'next'
-import { Session } from 'next-auth'
+import { NextApiRequest } from 'next';
 
 // Extend NextAuth types
 declare module 'next-auth' {
@@ -165,18 +164,23 @@ export interface UsageRecord {
 
 // File types
 export interface FileRecord {
-  id: string
-  originalName: string
-  filename: string
-  size: number
-  mimeType: string
-  storageUrl: string
-  thumbnailUrl?: string
-  status: 'UPLOADED' | 'PROCESSING' | 'READY' | 'ERROR' | 'DELETED'
-  pageCount?: number
-  metadata?: Record<string, any>
-  expiresAt?: Date
-  createdAt: Date
+  id: string;
+  user_id: string;
+  original_name: string;
+  file_size: number;
+  file_type: string;
+  s3_key: string;
+  s3_url: string;
+  processed_url: string | null;
+  operation_type: 'compress' | 'merge' | 'split' | 'watermark' | 'protect' | 'convert' | 'extract' | 'sign';
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  error_message: string | null;
+  processing_time: number | null;
+  compression_ratio: number | null;
+  pages_count: number | null;
+  created_at: string;
+  updated_at: string;
+  expires_at: string | null;
 }
 
 // API Key types

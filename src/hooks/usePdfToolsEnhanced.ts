@@ -1,7 +1,13 @@
-import { useState, useCallback, useEffect } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useState,
+} from 'react';
+
 import { useSession } from 'next-auth/react';
-import { supabase, supabaseHelpers } from '@/lib/supabase';
 import toast from 'react-hot-toast';
+
+import { supabaseHelpers } from '@/lib/supabase';
 
 export interface ProcessingOptions {
   quality?: 'low' | 'medium' | 'high';
@@ -26,14 +32,22 @@ export interface ProcessingResult {
 
 export interface FileRecord {
   id: string;
+  user_id: string;
   original_name: string;
   file_size: number;
-  operation_type: string;
+  file_type: string;
+  s3_key: string;
+  s3_url: string;
+  processed_url: string | null;
+  operation_type: 'compress' | 'merge' | 'split' | 'watermark' | 'protect' | 'convert' | 'extract' | 'sign';
   status: 'pending' | 'processing' | 'completed' | 'failed';
+  error_message: string | null;
+  processing_time: number | null;
+  compression_ratio: number | null;
+  pages_count: number | null;
   created_at: string;
-  processing_time?: number;
-  compression_ratio?: number;
-  error_message?: string;
+  updated_at: string;
+  expires_at: string | null;
 }
 
 export interface UserStats {
