@@ -1,14 +1,20 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
+import type {
+  NextApiRequest,
+  NextApiResponse,
+} from 'next';
 import { getServerSession } from 'next-auth';
+
+import { withAuth } from '@/middleware/auth.middleware';
+
 import { authOptions } from './auth/[...nextauth]';
 
-export default async function handler(
+async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
   try {
     const session = await getServerSession(req, res, authOptions);
-    
+
     return res.status(200).json({
       authenticated: !!session,
       user: session?.user || null,
@@ -22,3 +28,12 @@ export default async function handler(
     });
   }
 }
+
+// Export with rate limiting middleware
+export default withAuth(handler, {
+  requireAuth: false,
+  requireSubscription: false,
+  rateLimitType: 'general',
+  validateCSRF: false,
+  allowedMethods: ['GET'],
+});

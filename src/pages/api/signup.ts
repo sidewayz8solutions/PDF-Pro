@@ -5,6 +5,7 @@ import type {
 import { z } from 'zod';
 
 import { generateApiKey } from '@/lib/utils';
+import { withAuth } from '@/middleware/auth.middleware';
 
 const signupSchema = z.object({
   name: z.string().min(2).max(50),
@@ -12,7 +13,7 @@ const signupSchema = z.object({
   password: z.string().min(8).max(100),
 })
 
-export default async function handler(
+async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
@@ -132,3 +133,12 @@ export default async function handler(
     })
   }
 }
+
+// Export with rate limiting middleware for auth endpoints
+export default withAuth(handler, {
+  requireAuth: false,
+  requireSubscription: false,
+  rateLimitType: 'auth',
+  validateCSRF: false,
+  allowedMethods: ['POST'],
+});

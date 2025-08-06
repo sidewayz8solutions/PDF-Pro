@@ -1,9 +1,14 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { getServerSession } from 'next-auth';
 import formidable from 'formidable';
 import fs from 'fs/promises';
+import type {
+  NextApiRequest,
+  NextApiResponse,
+} from 'next';
+import { getServerSession } from 'next-auth';
+
 import { authOptions } from '@/lib/auth-supabase';
 import { pdfService } from '@/lib/pdf-service-enhanced';
+import { withAuth } from '@/middleware/auth.middleware';
 
 export const config = {
   api: {
@@ -16,7 +21,7 @@ interface CompressRequest {
   removeImages?: boolean;
 }
 
-export default async function handler(
+async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
@@ -38,7 +43,7 @@ export default async function handler(
     });
 
     const [fields, files] = await form.parse(req);
-    
+
     const file = Array.isArray(files.file) ? files.file[0] : files.file;
     if (!file) {
       return res.status(400).json({ error: 'No file provided' });
@@ -71,8 +76,8 @@ export default async function handler(
     await fs.unlink(file.filepath).catch(() => {});
 
     if (!result.success) {
-      return res.status(500).json({ 
-        error: result.error || 'Compression failed' 
+      return res.status(500).json({
+        error: result.error || 'Compression failed'
       });
     }
 
@@ -89,8 +94,17 @@ export default async function handler(
 
   } catch (error) {
     console.error('Compression error:', error);
-    res.status(500).json({ 
-      error: error instanceof Error ? error.message : 'Internal server error' 
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Internal server error'
     });
   }
 }
+
+// Export with rate limiting middleware
+export default withAuth(handler, {
+  requireAuth: true,
+  requireSubscription: false,
+  rateLimitType: 'processing',
+  validateCSRF: false,
+  allowedMethods: ['POST'],
+});

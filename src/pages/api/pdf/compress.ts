@@ -74,12 +74,56 @@ async function uploadToS3(buffer: Buffer, filename: string): Promise<string> {
   return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`
 }
 
+// Rate limiting middleware
+async function applyRateLimit(req: NextApiRequest, res: NextApiResponse): Promise<boolean> {
+  // Import rate limiters dynamically to avoid import issues
+  const { rateLimiters, speedLimiters, setSecurityHeaders } = await import('@/middleware/auth.middleware');
+
+  // Set security headers
+  setSecurityHeaders(res);
+
+  // Apply rate limiting for processing endpoints
+  const rateLimiter = rateLimiters.processing;
+  const speedLimiter = speedLimiters.processing;
+
+  try {
+    if (rateLimiter) {
+      await new Promise((resolve, reject) => {
+        rateLimiter(req as any, res as any, (err: any) => {
+          if (err) reject(err);
+          else resolve(undefined);
+        });
+      });
+    }
+
+    if (speedLimiter) {
+      await new Promise((resolve, reject) => {
+        speedLimiter(req as any, res as any, (err: any) => {
+          if (err) reject(err);
+          else resolve(undefined);
+        });
+      });
+    }
+
+    return true;
+  } catch (error) {
+    // Rate limit exceeded - response already sent by middleware
+    return false;
+  }
+}
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
+  }
+
+  // Apply rate limiting
+  const rateLimitPassed = await applyRateLimit(req, res);
+  if (!rateLimitPassed) {
+    return; // Response already sent by rate limiter
   }
 
   try {
@@ -123,6 +167,9 @@ export default async function handler(
           error: 'Insufficient credits',
           upgradeUrl: '/pricing'
         })
+      }
+      } catch (error) {
+        return res.status(401).json({ error: 'User not found' })
       }
     }
 
